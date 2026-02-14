@@ -17,3 +17,10 @@ I have four goals in this project :
 
 
 The specific topic domain I will work on is a small subset of Full Self-Driving capability for vehicles on roads. Initially just the ability to detect and track oncoming traffic.
+
+I don't even have any code yet, and I've already made a mistake.
+There is another important goal.
+
+I want to be able to document, afterwards, whatever process I went through with te AI (Grok) to implement this system.
+
+To that end, I will make a directory that will store every conversaton that I have with Grok. And then in the code commits I will indicate which conversation it was the result of.
