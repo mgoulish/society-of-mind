@@ -1,0 +1,5 @@
+OK! Now let's add a new Agent. This one will be called RoadFollower, and it will subscribe to ImageReader. It won't actually do anything yet, except receive the images. Also, when the ImageReader exhausts the available images, please make it start over again with the first one, and just loop that way indefinitely. And make both of our Agents print statements to stdout -- with timestamps -- so I can see what's happening.
+
+~
+
+Can you use the 'data' variable in NewRoadFollowerAgent somehow, like maybe put its size or something in the print statement?   I have a 'declared but not used' error on it from the compiler.
