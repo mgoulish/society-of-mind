@@ -6,6 +6,7 @@ import (
     _ "image/png" // Register PNG decoder
     "os"
     "path/filepath"
+    "reflect"
     "strconv"
     "strings"
     "sync"
@@ -19,6 +20,7 @@ type Agent struct {
 
     mu          sync.Mutex
     subscribers []chan interface{} // List of channels to broadcast outputs to
+    inputs      []chan interface{} // Multiple input channels
 }
 
 // Log prints a timestamped message for the agent (now with microseconds).
@@ -38,6 +40,17 @@ func (a *Agent) Subscribe(ch chan interface{}) {
     defer a.mu.Unlock()
     a.subscribers = append(a.subscribers, ch)
     a.Log(fmt.Sprintf("New subscriber registered (total: %d)", len(a.subscribers)))
+}
+
+// SubscribeTo allows this agent to subscribe to a producer, adding a new input channel.
+func (a *Agent) SubscribeTo(producer *Agent) chan interface{} {
+    ch := make(chan interface{}, 100) // Buffered
+    producer.Subscribe(ch)
+    a.mu.Lock()
+    defer a.mu.Unlock()
+    a.inputs = append(a.inputs, ch)
+    a.Log(fmt.Sprintf("Subscribed to %s (total inputs: %d)", producer.Name, len(a.inputs)))
+    return ch
 }
 
 // Publish sends data to all subscribed channels (non-blocking; assumes channels are buffered if needed).
@@ -134,8 +147,8 @@ func NewImageReaderAgent() *Agent {
     }
 }
 
-// NewRoadFollowerAgent creates an agent that subscribes to ImageReader, processes each input
-// by loading a simulated output image from ./simulated_data/RoadFollower/, and publishes it.
+// NewRoadFollowerAgent creates an agent that subscribes to ImageReader (single input), uses the multi-input mechanism
+// to wait for data, then loads a simulated output image from ./simulated_data/RoadFollower/ and publishes it.
 func NewRoadFollowerAgent() *Agent {
     return &Agent{
         Name: "RoadFollower",
@@ -146,9 +159,7 @@ func NewRoadFollowerAgent() *Agent {
                 self.Log("Error: ImageReader not found in registry")
                 return
             }
-
-            ch := make(chan interface{}, 100) // Buffered to handle ~20/sec without blocking
-            producer.Subscribe(ch)
+            self.SubscribeTo(producer)
             self.Log("Subscribed to ImageReader; waiting for inputs")
 
             // Scan own simulated output directory
@@ -173,46 +184,94 @@ func NewRoadFollowerAgent() *Agent {
             self.Log(fmt.Sprintf("Found %d simulated output images; ready to process", maxI))
 
             i := 1 // Start with first simulated output
-            for data := range ch { // Receives indefinitely
-                // Log input details
-                if img, ok := data.(image.Image); ok {
-                    bounds := img.Bounds()
-                    self.Log(fmt.Sprintf("Received input image of size %dx%d", bounds.Dx(), bounds.Dy()))
-                } else {
-                    self.Log("Received non-image input")
-                    continue
+            for {
+                // Block until at least one input is ready (even for single input)
+                self.mu.Lock()
+                inputChannels := append([]chan interface{}(nil), self.inputs...) // Copy to avoid lock during reflect
+                self.mu.Unlock()
+                if len(inputChannels) == 0 {
+                    self.Log("No inputs available; exiting run loop")
+                    return
                 }
 
-                // Load next simulated output image
-                outputFileName := fmt.Sprintf("%04d.png", i)
-                outputPath := filepath.Join(outputDir, outputFileName)
-                outputFile, err := os.Open(outputPath)
-                if err != nil {
-                    self.Log(fmt.Sprintf("Error opening simulated output %s: %v", outputPath, err))
-                    i++
-                    if i > maxI {
-                        i = 1
+                cases := make([]reflect.SelectCase, len(inputChannels))
+                for idx, ch := range inputChannels {
+                    cases[idx] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch)}
+                }
+                chosen, value, ok := reflect.Select(cases)
+                if !ok {
+                    self.Log("Input channel closed; removing it")
+                    self.mu.Lock()
+                    self.inputs = append(self.inputs[:chosen], self.inputs[chosen+1:]...)
+                    self.mu.Unlock()
+                    continue
+                }
+                data := value.Interface()
+
+                // Process the initial item
+                batch := []interface{}{data}
+                self.Log("Received initial input from channel")
+
+                // Drain other channels non-blockingly (though for single input, this is a no-op)
+                for idx, ch := range inputChannels {
+                    if idx == chosen {
+                        continue // Already handled
                     }
-                    continue
-                }
-                outputImg, _, err := image.Decode(outputFile)
-                outputFile.Close()
-                if err != nil {
-                    self.Log(fmt.Sprintf("Error decoding simulated output %s: %v", outputPath, err))
-                    i++
-                    if i > maxI {
-                        i = 1
+                    for {
+                        select {
+                        case extra, ok := <-ch:
+                            if !ok {
+                                self.Log("Input channel closed during drain")
+                                // Remove it
+                                self.mu.Lock()
+                                for k, inputCh := range self.inputs {
+                                    if inputCh == ch {
+                                        self.inputs = append(self.inputs[:k], self.inputs[k+1:]...)
+                                        break
+                                    }
+                                }
+                                self.mu.Unlock()
+                                continue
+                            }
+                            batch = append(batch, extra)
+                            self.Log("Drained additional input")
+                        default:
+                            // No more available
+                        }
                     }
-                    continue
                 }
 
-                // "Process" by publishing the simulated output
-                self.Publish(outputImg)
-                self.Log(fmt.Sprintf("Processed input to simulated output image %s", outputFileName))
+                // Process batch (for single input, batch size is usually 1, but could drain more if buffered)
+                for _, item := range batch {
+                    if img, ok := item.(image.Image); ok {
+                        bounds := img.Bounds()
+                        self.Log(fmt.Sprintf("Received input image of size %dx%d", bounds.Dx(), bounds.Dy()))
 
-                i++
-                if i > maxI {
-                    i = 1
+                        // Load next simulated output image
+                        outputFileName := fmt.Sprintf("%04d.png", i)
+                        outputPath := filepath.Join(outputDir, outputFileName)
+                        outputFile, err := os.Open(outputPath)
+                        if err != nil {
+                            self.Log(fmt.Sprintf("Error opening simulated output %s: %v", outputPath, err))
+                            i = (i % maxI) + 1
+                            continue
+                        }
+                        outputImg, _, err := image.Decode(outputFile)
+                        outputFile.Close()
+                        if err != nil {
+                            self.Log(fmt.Sprintf("Error decoding simulated output %s: %v", outputPath, err))
+                            i = (i % maxI) + 1
+                            continue
+                        }
+
+                        // Publish the simulated output
+                        self.Publish(outputImg)
+                        self.Log(fmt.Sprintf("Processed input to simulated output image %s", outputFileName))
+
+                        i = (i % maxI) + 1
+                    } else {
+                        self.Log("Received non-image input")
+                    }
                 }
             }
         },
@@ -225,7 +284,7 @@ func main() {
     RegisterAgent(reader)
     reader.Start()
 
-    // Add the RoadFollower agent (subscribes to reader, simulates outputs)
+    // Add the RoadFollower agent (now using multi-input mechanism for single input)
     follower := NewRoadFollowerAgent()
     RegisterAgent(follower)
     follower.Start()
