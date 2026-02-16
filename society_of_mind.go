@@ -72,8 +72,9 @@ func FindAgent(name string) *Agent {
     return val.(*Agent)
 }
 
-// NewImageReaderAgent creates an agent that reads images from a directory in a loop.
-func NewImageReaderAgent(dir string) *Agent {
+// NewImageReaderAgent creates an agent that reads images from ./simulated_data/ImageReader/ in a loop.
+func NewImageReaderAgent() *Agent {
+    dir := "./simulated_data/ImageReader"
     return &Agent{
         Name: "ImageReader",
         run: func(self *Agent) {
@@ -133,7 +134,8 @@ func NewImageReaderAgent(dir string) *Agent {
     }
 }
 
-// NewRoadFollowerAgent creates an agent that subscribes to ImageReader and receives images.
+// NewRoadFollowerAgent creates an agent that subscribes to ImageReader, processes each input
+// by loading a simulated output image from ./simulated_data/RoadFollower/, and publishes it.
 func NewRoadFollowerAgent() *Agent {
     return &Agent{
         Name: "RoadFollower",
@@ -147,15 +149,70 @@ func NewRoadFollowerAgent() *Agent {
 
             ch := make(chan interface{}, 100) // Buffered to handle ~20/sec without blocking
             producer.Subscribe(ch)
-            self.Log("Subscribed to ImageReader; waiting for images")
+            self.Log("Subscribed to ImageReader; waiting for inputs")
 
-            for data := range ch { // Receives indefinitely (channel never closed)
-                // Use 'data' to log image details (fixes unused variable)
+            // Scan own simulated output directory
+            outputDir := "./simulated_data/RoadFollower"
+            maxI := 0
+            files, err := filepath.Glob(filepath.Join(outputDir, "*.png"))
+            if err != nil {
+                self.Log(fmt.Sprintf("Error scanning output directory %s: %v", outputDir, err))
+                return
+            }
+            for _, f := range files {
+                name := filepath.Base(f)
+                name = strings.TrimSuffix(name, ".png")
+                if num, err := strconv.Atoi(name); err == nil && num > maxI {
+                    maxI = num
+                }
+            }
+            if maxI == 0 {
+                self.Log("No PNG output images found in simulated directory")
+                return
+            }
+            self.Log(fmt.Sprintf("Found %d simulated output images; ready to process", maxI))
+
+            i := 1 // Start with first simulated output
+            for data := range ch { // Receives indefinitely
+                // Log input details
                 if img, ok := data.(image.Image); ok {
                     bounds := img.Bounds()
-                    self.Log(fmt.Sprintf("Received image of size %dx%d", bounds.Dx(), bounds.Dy()))
+                    self.Log(fmt.Sprintf("Received input image of size %dx%d", bounds.Dx(), bounds.Dy()))
                 } else {
-                    self.Log("Received non-image data")
+                    self.Log("Received non-image input")
+                    continue
+                }
+
+                // Load next simulated output image
+                outputFileName := fmt.Sprintf("%04d.png", i)
+                outputPath := filepath.Join(outputDir, outputFileName)
+                outputFile, err := os.Open(outputPath)
+                if err != nil {
+                    self.Log(fmt.Sprintf("Error opening simulated output %s: %v", outputPath, err))
+                    i++
+                    if i > maxI {
+                        i = 1
+                    }
+                    continue
+                }
+                outputImg, _, err := image.Decode(outputFile)
+                outputFile.Close()
+                if err != nil {
+                    self.Log(fmt.Sprintf("Error decoding simulated output %s: %v", outputPath, err))
+                    i++
+                    if i > maxI {
+                        i = 1
+                    }
+                    continue
+                }
+
+                // "Process" by publishing the simulated output
+                self.Publish(outputImg)
+                self.Log(fmt.Sprintf("Processed input to simulated output image %s", outputFileName))
+
+                i++
+                if i > maxI {
+                    i = 1
                 }
             }
         },
@@ -163,12 +220,12 @@ func NewRoadFollowerAgent() *Agent {
 }
 
 func main() {
-    // Assume images are in ./images directory (create it with 0001.png, etc., for testing)
-    reader := NewImageReaderAgent("./images")
+    // Agents use ./simulated_data/{AGENT_NAME}/ for input/output simulation
+    reader := NewImageReaderAgent()
     RegisterAgent(reader)
     reader.Start()
 
-    // Add the new RoadFollower agent
+    // Add the RoadFollower agent (subscribes to reader, simulates outputs)
     follower := NewRoadFollowerAgent()
     RegisterAgent(follower)
     follower.Start()

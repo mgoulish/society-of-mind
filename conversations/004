@@ -1,0 +1,6 @@
+I think the idea of simulated input or output for the Agents will be something that we will use a lot. So let's establish a convention for it that all Agents can use.  Let's say that any Agent that uses simulated data will be able to find it in ./simulated_data/AGENT_NAME.   Please make this change to the ImageReader, and also change RoadFollower to read images out of its own simulated_data directory and loop on them just like ImageReader does.
+
+~
+
+Make the RoadFollower still accept its inputs from the ImageReader. But then, for each such image, make it read the next image from the simulated_data to simulate the result of its processing. (Its processing result will also be an image.)
+
