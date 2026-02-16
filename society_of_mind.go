@@ -3,6 +3,7 @@ package main
 import (
     "fmt"
     "image"
+    "image/draw"
     _ "image/png" // Register PNG decoder
     "os"
     "path/filepath"
@@ -12,6 +13,7 @@ import (
     "sync"
     "time"
 )
+
 
 // Agent represents a runtime entity that can produce data and allow others to subscribe to its outputs.
 type Agent struct {
@@ -147,8 +149,24 @@ func NewImageReaderAgent() *Agent {
     }
 }
 
-// NewRoadFollowerAgent creates an agent that subscribes to ImageReader (single input), uses the multi-input mechanism
-// to wait for data, then loads a simulated output image from ./simulated_data/RoadFollower/ and publishes it.
+
+
+// copyData deep-copies data based on type for stability.
+func copyData(item interface{}) interface{} {
+    switch v := item.(type) {
+    case image.Image:
+        bounds := v.Bounds()
+        copyImg := image.NewRGBA(bounds)
+        draw.Draw(copyImg, bounds, v, bounds.Min, draw.Src)
+        return copyImg
+    default:
+        return v // As-is for other types
+    }
+}
+
+
+
+// NewRoadFollowerAgent (updated with copying)
 func NewRoadFollowerAgent() *Agent {
     return &Agent{
         Name: "RoadFollower",
@@ -212,17 +230,16 @@ func NewRoadFollowerAgent() *Agent {
                 batch := []interface{}{data}
                 self.Log("Received initial input from channel")
 
-                // Drain other channels non-blockingly (though for single input, this is a no-op)
+                // Drain other channels non-blockingly (no-op for single)
                 for idx, ch := range inputChannels {
                     if idx == chosen {
-                        continue // Already handled
+                        continue
                     }
                     for {
                         select {
                         case extra, ok := <-ch:
                             if !ok {
                                 self.Log("Input channel closed during drain")
-                                // Remove it
                                 self.mu.Lock()
                                 for k, inputCh := range self.inputs {
                                     if inputCh == ch {
@@ -241,11 +258,18 @@ func NewRoadFollowerAgent() *Agent {
                     }
                 }
 
-                // Process batch (for single input, batch size is usually 1, but could drain more if buffered)
-                for _, item := range batch {
+                // Copy the batch for stable processing
+                copiedBatch := make([]interface{}, len(batch))
+                for j, item := range batch {
+                    copiedBatch[j] = copyData(item)
+                }
+                self.Log(fmt.Sprintf("Copied %d input items for processing", len(copiedBatch)))
+
+                // Process copied batch
+                for _, item := range copiedBatch {
                     if img, ok := item.(image.Image); ok {
                         bounds := img.Bounds()
-                        self.Log(fmt.Sprintf("Received input image of size %dx%d", bounds.Dx(), bounds.Dy()))
+                        self.Log(fmt.Sprintf("Processing copied input image of size %dx%d", bounds.Dx(), bounds.Dy()))
 
                         // Load next simulated output image
                         outputFileName := fmt.Sprintf("%04d.png", i)
@@ -264,7 +288,7 @@ func NewRoadFollowerAgent() *Agent {
                             continue
                         }
 
-                        // Publish the simulated output
+                        // Publish the simulated output (no need to copy here unless subscribers mutate)
                         self.Publish(outputImg)
                         self.Log(fmt.Sprintf("Processed input to simulated output image %s", outputFileName))
 
@@ -277,6 +301,8 @@ func NewRoadFollowerAgent() *Agent {
         },
     }
 }
+
+
 
 func main() {
     // Agents use ./simulated_data/{AGENT_NAME}/ for input/output simulation
@@ -292,3 +318,4 @@ func main() {
     // Keep the program running indefinitely
     select {}
 }
+
