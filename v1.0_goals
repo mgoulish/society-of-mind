@@ -1,0 +1,35 @@
+v1.0 Goals
+==========================================
+
+A small but coherent “society” of Abstractors that can take a 
+stream of synthetic (or simple real) images containing an 
+approaching stop sign and reliably produce a high-level 
+StopSignDetected Abstraction.
+
+The system should demonstrate several emergent behaviors 
+working together in one integrated scenario:
+
+1. Object tracking with identity — The system maintains a persistent 
+   track of the object across frames even as it grows and moves.
+
+2. Focus of attention / suppression — Low-level detectors stop 
+   redundantly reporting the same object once it is being tracked.
+
+3. Incremental evidence accumulation — Recognition improves over 
+   multiple frames as more evidence (size, shape, color, position) 
+   becomes available.
+
+4. Multi-level feature combination — Mid-level Abstractors combine 
+   simpler features (e.g., red region + octagonal shape) into 
+   higher-level hypotheses.
+
+5. Good observability — The logging and tracing make it reasonably 
+   clear why the system eventually fires StopSignDetected.
+
+
+
+This is not a production-grade vision system. It is a research/experimental 
+milestone that shows the architecture can produce meaningful emergent behavior 
+on a concrete, understandable task.
+
+

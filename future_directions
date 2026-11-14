@@ -1,0 +1,72 @@
+
+Ideas for future directions for this project
+=======================================================
+
+
+1. Some Abstractors have multiple instances running.
+   The different instances are distinguished from each other
+   by having different parameter settings or some other form 
+   of biases. 
+
+   These Abstractors have IDs. The higher level Abstractors 
+   that consume their outputs sometimes consume multiple 
+   outputs of the same type, to see which one will work best.
+
+   Abstractors may become accustomed to the IDs of the lower-
+   level Abstractors whose Abstractions work best for them.
+   They have some way of becoming more closely coupled to those
+   Abstractors.
+
+   In this ways small networks of Abstractors can form and 
+   possibly dissolve.
+
+
+
+2. Bipolar Confidence
+   Confidence values stored with Abstractions can contain 
+   negative and positive confidence atthe same time.
+   If an Abstraction has both high negative and high positive 
+   confidence, it is said to have high Confusion.
+
+   Abstractors actively seek out lower-level Abstractions or
+   make changes in their own processing to reduce Confusion.
+
+
+
+3. Marketplace
+   The system runs on a machine that has limited resources.
+   Resource usage is controlled by giving 'money' to Abstractors.
+   They pay for lower-levels Abstractions that they use, and
+   they are paid for their own outputs if a higher-level 
+   Abstractor gets paid for its output that used their input.
+
+   Bottom-level "Sensors" do not participate in the market.
+
+   Top-level "Goal" Abstractors issue new money to their immediate
+   suppliers when they are able to successfully post an Abstraction.
+
+   Abstractors seek to reduce their costs by purchasing inputs 
+   that are more likely to result in payment. They also seek to 
+   increase their income by altering their parameters or by altering
+   their behavior in some other way. Trying to produce what someone
+   will buy.
+
+   Abstractors that run low on money are forced to operate less 
+   frequently or are terminated.
+
+   Bankruptcy results in termination.
+
+
+
+4. Antagonism
+   An Abstractor decides that it is seeing a STOP sign up ahead, and 
+   published its Abstraction with high positive Confidence.
+   But another Abstractor looks at the STOP sign it has posted, and
+   it posts an Abstraction that is somehow antagonistic. 
+   For example, it says "That is not a STOP sign.  It is a man wearing
+   a t-shirt with an image of a STOP sign printed on it." It also has
+   high positive Confidence.
+
+   A higher-level Abstractor takes both of these results into account,
+   and makes its decision.
+

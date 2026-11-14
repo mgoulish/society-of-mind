@@ -1,0 +1,79 @@
+
+Phase 1
+{
+  Focus: 
+    Strengthen the Foundation
+
+  Key Capabilities Added:
+    DONE   Add proper replay mode (Abstractors can run from JSON logs instead of live input).
+    DONE   Improve logging (e.g., make it easier to see the full chain of Abstractions for one frame).
+    DONE   Add a simple way to generate synthetic scenarios (not just one growing blob).
+    DONE   Create a basic test harness or “scenario runner”.
+
+
+  Estimated Complexity:
+    Medium
+}
+
+
+Phase 2
+{
+  Focus:
+    Tracking & Attention
+
+  Key Capabilities Added:
+    DONE  Improve the Tracker (handle multiple objects, better state management, retirement of lost tracks).
+    DONE  Make suppression more robust (use bounding boxes or regions instead of just x distance).
+    DONE  Add basic temporal consistency (e.g., only trust a track after it has been seen for N frames).
+
+  Estimated Complexity:
+    Medium
+}
+
+
+Phase 3
+{
+  Focus:
+    Feature Detection
+
+  Key Capabilities Added:
+    Create a ShapeAnalyzer Abstractor that looks inside TrackedRegions and detects simple shapes (starting with octagons / stop signs).
+    Possibly add a color/structure Abstractor that looks for white-on-red patterns inside tracked regions.
+    Make Abstractors able to request more detailed analysis of a specific region when needed.
+
+  Estimated Complexity:
+    Medium-High
+}
+
+
+Phase 4
+{
+  Focus:
+    Hypothesis & Recognition
+
+  Key Capabilities Added:
+    Create an EvidenceAccumulator or HypothesisBuilder that combines TrackedRegion + shape + color evidence over multiple frames.
+    Build the final StopSignDetector Abstractor that only fires when it has sufficient consistent evidence across frames.
+    Add simple confidence scoring so StopSignDetected includes a confidence value that grows over time.
+
+  Estimated Complexity:
+    Medium
+}
+
+
+Phase 5
+{
+  Focus:
+    Integration & Polish
+
+  Key Capabilities Added:
+    Create one or two complete end-to-end synthetic scenarios that demonstrate the full chain.
+    Improve overall logging / visualization so the emergent behavior is easy to explain.
+    Write a short “v1.0 Demo” document or README section showing what the system can do.
+    Clean up code, add comments, and stabilize the core interfaces.
+
+  Estimated Complexity:
+    Low-Medium
+}
+
+

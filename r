@@ -1,4 +1,4 @@
 #! /bin/bash
 
-go run society_of_mind.go
+go run ./cmd/vision-society
 

@@ -1,0 +1,1 @@
+The Tracker should only fire TrackedBlob when there is a meaningful change (e.g., significant movement or growth), rather than on every single frame. This reduces noise and makes the output more useful for higher-level Abstractors.

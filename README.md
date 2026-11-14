@@ -1,26 +1,37 @@
-# society-of-mind
-I want to show a way of making intelligent software that is quite different from the recent dominant paradigm of vast neural networks trained with immense data sets and tens of millions of dollars of electricity.
+# vision-society
 
-The technique I have always been more interested in is inspired by Minsky's "Society of Mind" concept, in which intelligence is seen as an emergent property of the interaction of large numbers of simple, non-intelligent 'agents'.
+An experimental non-neural emergent AI system for machine vision, loosely inspired by Marvin Minsky’s *Society of Mind* and classic blackboard architectures.
 
-I have always believed that the best topic domain in which to demonstrate something like this is Vision: the highest-bandwidth and most valuable sense that Earth Life has. I expect that human intelligence is mostly built out of structures and strategies that were originally developed to address the challenges of Vision.
+## Current Status
 
-I have four goals in this project :
+**v0.1** — Minimal working skeleton.
 
-  * to show emergent adaptive behavior from the interaction of many simple interacting agents.
+The system currently demonstrates the core interaction loop:
 
-  * to show that a Society of Mind system is understandable and debuggable in a way that Neural Network AI technology is not.
+- A `SyntheticBlobEmitter` posts synthetic `RedBlob` Abstractions (with numeric size/position data).
+- A `SimpleBlobTracker` subscribes to `RedBlob`, maintains simple identity and history, and posts `TrackedBlob` Abstractions.
+- All activity is logged in structured JSON.
+- The system runs cleanly with graceful shutdown.
 
-  * to experiment with the use of a latest-technology LLM AI in the creation of a significant application, and
+This version proves that the basic blackboard + autonomous Abstractor model works in Go.
 
-  * to give me an excuse to buy a 256-core Zen 6 machine not too long after they become available.
+## Goals
+
+The long-term goal is to explore **emergent adaptive behavior** that arises from the interactions between many simple, loosely coupled components rather than from neural networks or hand-written pipelines.
+
+We are particularly interested in behaviors such as:
+
+- Focus of attention and suppression
+- Object identity and tracking across frames
+- Incremental hypothesis building
+- On-demand specialization (dynamic creation of Abstractors)
+- Robustness through redundancy and multiple paths
+
+## Quick Start
+
+```bash
+git clone https://github.com/mgoulish/vision-society.git
+cd vision-society
+go run ./cmd/vision-society
 
 
-The specific topic domain I will work on is a small subset of Full Self-Driving capability for vehicles on roads. Initially just the ability to detect and track oncoming traffic.
-
-I don't even have any code yet, and I've already made a mistake.
-There is another important goal.
-
-I want to be able to document, afterwards, whatever process I went through with te AI (Grok) to implement this system.
-
-To that end, I will make a directory that will store every conversaton that I have with Grok. And then in the code commits I will indicate which conversation it was the result of.
